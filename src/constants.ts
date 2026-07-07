@@ -44,7 +44,8 @@ export const consts = {
 	security: {
 		None: 1,
 		VNC: 2,
-		NTLM: 4
+		NTLM: 4,
+		TLS: 18
 	},
 	qemuAudioFormats: {
 		u8: 0,

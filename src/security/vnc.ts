@@ -1,5 +1,5 @@
 import { SocketBuffer } from '../socketbuffer';
-import { ISecurityType } from './securitytype';
+import { ISecurityType, ISecurityTypeHooks } from './securitytype';
 import * as net from 'node:net';
 // @ts-ignore
 import { DES } from 'des.js';
@@ -32,7 +32,7 @@ export class VncSecurityType implements ISecurityType {
 		}
 	}
 
-	async authenticate(rfbVer: string, socket: SocketBuffer, connection: net.Socket, auth: VncAuthInfo): Promise<void> {
+	async authenticate(rfbVer: string, socket: SocketBuffer, connection: net.Socket, auth: VncAuthInfo, hooks: ISecurityTypeHooks): Promise<void> {
 		if (!auth.password) {
 			throw new Error('No password supplied for VNC authentication.');
 		}
