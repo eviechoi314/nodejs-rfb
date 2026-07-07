@@ -1,6 +1,6 @@
 import { Socket } from 'net';
 import { SocketBuffer } from '../socketbuffer';
-import { ISecurityType } from './securitytype';
+import { ISecurityType, ISecurityTypeHooks } from './securitytype';
 import * as crypto from 'crypto';
 import * as fs from 'fs/promises';
 // @ts-ignore
@@ -35,7 +35,7 @@ export class NtlmSecurityType implements ISecurityType {
 		return 'Windows NTLM';
 	}
 
-	async authenticate(rfbVer: string, socket: SocketBuffer, connection: Socket, auth: NtlmAuthInfo): Promise<void> {
+	async authenticate(rfbVer: string, socket: SocketBuffer, connection: Socket, auth: NtlmAuthInfo, hooks: ISecurityTypeHooks): Promise<void> {
 		if (!auth.username || !auth.password) {
 			throw new Error('No username or password supplied for NTLM authentication.');
 		}

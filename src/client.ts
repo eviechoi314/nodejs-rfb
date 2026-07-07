@@ -18,6 +18,7 @@ import { ISecurityType } from './security/securitytype.js';
 import { NoneSecurityType } from './security/none.js';
 import { VncSecurityType } from './security/vnc.js';
 import { NtlmAuthInfo, NtlmSecurityType } from './security/ntlm.js';
+import { AnonTlsSecurityType } from './security/anontls.js';
 
 export class VncClient extends EventEmitter {
 	// These are in no particular order.
@@ -93,6 +94,7 @@ export class VncClient extends EventEmitter {
 	public encodings: number[];
 
 	private _connection: net.Socket | null = null;
+	private _dataListener: ((data: Buffer) => void) | null = null;
 	private _socketBuffer: SocketBuffer;
 
 	static get consts() {
@@ -163,6 +165,7 @@ export class VncClient extends EventEmitter {
 		this._securityTypes[consts.security.None] = new NoneSecurityType();
 		this._securityTypes[consts.security.VNC] = new VncSecurityType();
 		this._securityTypes[consts.security.NTLM] = new NtlmSecurityType();
+		this._securityTypes[consts.security.TLS] = new AnonTlsSecurityType();
 
 		if (this._timerInterval) {
 			this._fbTimer();
@@ -254,9 +257,30 @@ export class VncClient extends EventEmitter {
 			this.emit('connectError', err);
 		});
 
-		this._connection?.on('data', async (data) => {
+		this._attachDataListener(this._connection!);
+	}
+
+	/**
+	 * Attach the listener that feeds inbound bytes into the socket buffer.
+	 * Kept swappable so a security type can upgrade the transport (e.g. wrap
+	 * it in TLS) mid-handshake and re-point this at the new socket.
+	 */
+	private _attachDataListener(socket: net.Socket) {
+		this._dataListener = (data: Buffer) => {
 			this._socketBuffer.pushData(data);
-		});
+		};
+		socket.on('data', this._dataListener);
+	}
+
+	/**
+	 * Detach the current data listener from the current connection. Used
+	 * right before a security type takes over the raw socket (e.g. to wrap
+	 * it in TLS), so our listener doesn't steal bytes the new layer needs.
+	 */
+	private _detachDataListener() {
+		if (this._connection && this._dataListener) {
+			this._connection.removeListener('data', this._dataListener);
+		}
 	}
 
 	private async _readWorker() {
@@ -419,9 +443,22 @@ export class VncClient extends EventEmitter {
 		}
 
 		this._log(`Authenticating using ${this._securityType.getName()}`, true);
-		await this._securityType.authenticate(this._version, this._socketBuffer, this._connection!, this._auth);
-		this._log('Authentication finished, waiting for SecurityResult', true);
+		const upgradedSocket = await this._securityType.authenticate(this._version, this._socketBuffer, this._connection!, this._auth, {
+			detachDataListener: () => this._detachDataListener()
+		});
 		this._expectingChallenge = false;
+
+		if (upgradedSocket) {
+			// e.g. TLS-wrapped auth: re-run security-type negotiation over the
+			// upgraded channel instead of proceeding straight to SecurityResult.
+			this._log('Connection upgraded by security type, re-negotiating over new channel', true);
+			this._connection = upgradedSocket;
+			this._attachDataListener(this._connection);
+			this._waitingSecurityTypes = true;
+			return;
+		}
+
+		this._log('Authentication finished, waiting for SecurityResult', true);
 		this._waitingSecurityResult = true;
 	}
 
