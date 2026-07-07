@@ -17,6 +17,14 @@ import * as tls from 'node:tls';
  * We surface that by returning the upgraded socket; the caller re-enters its
  * normal security-type handling loop on it, which naturally reaches the
  * existing VncSecurityType/NoneSecurityType for the inner round.
+ *
+ * That reuse is generic, not VNC-specific: NtlmSecurityType only ever talks
+ * through the shared SocketBuffer/connection.write(), never the raw socket's
+ * 'data' event directly, so a server offering type 18 -> type 4 (NTLM) for
+ * the inner round would hit the exact same unmodified code path. Untested
+ * (no server combining TLS with NTLM was available to verify against) - the
+ * only nested pairing actually observed on the wire is 18 -> 2 (VNC-auth),
+ * via gnome-remote-desktop.
  */
 export class AnonTlsSecurityType implements ISecurityType {
 	getName(): string {
