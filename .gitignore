@@ -9,3 +9,6 @@ node_modules
 dist/
 yarn.lock
 .yarn/
+
+# upstream uses yarn (see packageManager field); don't commit an npm lockfile
+package-lock.json

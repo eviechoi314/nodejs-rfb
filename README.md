@@ -3,6 +3,8 @@ Pure node.js implementation of RFC 6143 (RFB Protocol / VNC) client with no exte
 
 Fork by Computernewb of Filipe Calaça's original [vnc-rfb-client](https://github.com/ayunami2000/vnc-rfb-client) project mainly for use with the CollabVM project.
 
+> This is a further fork of [computernewb/nodejs-rfb](https://github.com/computernewb/nodejs-rfb) adding RFB security type 18 (GTK-VNC's anonymous-TLS handshake) support, needed to connect to GNOME's `gnome-remote-desktop` VNC backend — see [CHANGELOG.md](CHANGELOG.md) for details. Consumed by [eviechoi314/mcp-vnc](https://github.com/eviechoi314/mcp-vnc), which depends on this fork (via a `github:` dependency spec) instead of the upstream npm package specifically for that support.
+
 ## Credits
 
 ### Filipe Calaça 
